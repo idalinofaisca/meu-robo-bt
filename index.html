@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle Robô Bluetooth</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #222; color: white; }
+        .container { margin-top: 50px; }
+        button { 
+            padding: 20px; font-size: 18px; margin: 10px; cursor: pointer;
+            border-radius: 10px; border: none; background: #007bff; color: white;
+        }
+        button:active { background: #0056b3; }
+        #conectar { background: #28a745; }
+        .controles { display: grid; grid-template-columns: repeat(3, 80px); justify-content: center; }
+        .status { margin: 20px; color: #ffc107; }
+    </style>
+</head>
+<body>
+
+    <h2>Controle de Robô (HC-05)</h2>
+    
+    <button id="conectar">Conectar Bluetooth</button>
+    <p class="status" id="status">Status: Desconectado</p>
+
+    <div class="container">
+        <div class="controles">
+            <div></div>
+            <button onmousedown="enviar('F')" onmouseup="enviar('P')">▲</button>
+            <div></div>
+            <button onmousedown="enviar('E')" onmouseup="enviar('P')">◀</button>
+            <button onmousedown="enviar('P')">■</button>
+            <button onmousedown="enviar('D')" onmouseup="enviar('P')">▶</button>
+            <div></div>
+            <button onmousedown="enviar('T')" onmouseup="enviar('P')">▼</button>
+            <div></div>
+        </div>
+    </div>
+
+    <script>
+        let caracteristicaBluetooth = null;
+
+        // UUID padrão para o perfil Serial (SPP) do HC-05
+        const UUID_SERIAL = '00001101-0000-1000-8000-00805f9b34fb';
+
+        document.getElementById('conectar').addEventListener('click', async () => {
+            try {
+                const statusLabel = document.getElementById('status');
+                statusLabel.innerText = "Buscando...";
+
+                // Solicita o dispositivo
+                const device = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'HC' }], // Filtra por nomes que começam com HC (HC-05, HC-06)
+                    optionalServices: [UUID_SERIAL]
+                });
+
+                statusLabel.innerText = "Conectando...";
+                const server = await device.gatt.connect();
+                const service = await server.getPrimaryService(UUID_SERIAL);
+                caracteristicaBluetooth = await service.getCharacteristic(UUID_SERIAL);
+
+                statusLabel.innerText = "Conectado a: " + device.name;
+                statusLabel.style.color = "#28a745";
+            } catch (error) {
+                console.error("Erro:", error);
+                document.getElementById('status').innerText = "Erro ao conectar!";
+            }
+        });
+
+        async function enviar(comando) {
+            if (caracteristicaBluetooth) {
+                const encoder = new TextEncoder();
+                await caracteristicaBluetooth.writeValue(encoder.encode(comando));
+                console.log("Enviado:", comando);
+            } else {
+                console.log("Bluetooth não conectado.");
+            }
+        }
+    </script>
+</body>
+</html>
